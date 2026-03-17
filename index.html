@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSIRT Incident Response — 6-Phase Framework</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  body{background:#0a0e1a;color:#e0e6f0;font-family:'Inter',sans-serif}
+
+  .download-bar{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,14,26,.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,107,107,.15);padding:12px 30px;display:flex;justify-content:space-between;align-items:center}
+  .download-bar h3{color:#ff6b6b;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase}
+  .btn-download{background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;border:none;padding:10px 28px;border-radius:8px;font-family:'Inter';font-size:13px;font-weight:700;cursor:pointer;transition:all .3s;letter-spacing:.5px;box-shadow:0 4px 15px rgba(238,90,36,.3)}
+  .btn-download:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(238,90,36,.5)}
+  .btn-download.done{background:linear-gradient(135deg,#51cf66,#37b24d);pointer-events:none}
+
+  #diagram{padding:75px 35px 50px;max-width:1550px;margin:0 auto;background:#0a0e1a}
+
+  .main-title{text-align:center;margin-bottom:6px}
+  .main-title h1{font-size:32px;font-weight:900;background:linear-gradient(135deg,#ff6b6b,#ffa94d,#ffd93d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px}
+  .main-title .sub{font-size:14px;color:#8b949e;letter-spacing:3px;text-transform:uppercase;margin-top:4px}
+  .main-title .desc{font-size:12px;color:#484f58;margin-top:6px;max-width:900px;margin-left:auto;margin-right:auto;line-height:1.7;font-style:italic}
+
+  .divider{height:2px;background:linear-gradient(90deg,transparent,#ff6b6b22,#ffa94d22,transparent);margin:32px 0;border-radius:2px}
+  .section-title{font-size:18px;font-weight:800;color:#e2e8f0;margin-bottom:20px;padding-left:16px;border-left:4px solid #ff6b6b;letter-spacing:.5px}
+  .section-title span{color:#8b949e;font-weight:400;font-size:11px;display:block;margin-top:3px;letter-spacing:0}
+
+  /* Intro Box */
+  .intro-box{background:linear-gradient(135deg,#161b22,#1a1f2e);border:1px solid #21262d;border-radius:14px;padding:28px 32px;display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+  .intro-left{flex:1;min-width:300px}
+  .intro-left h3{color:#ff6b6b;font-size:14px;font-weight:700;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase}
+  .intro-left p{font-size:12px;color:#8b949e;line-height:1.8}
+  .intro-right{flex:1;min-width:300px}
+  .intro-right h3{color:#ffa94d;font-size:14px;font-weight:700;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase}
+
+  .csirt-roles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .role-item{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px}
+  .role-icon{font-size:18px}
+  .role-info .role-name{font-size:11px;font-weight:700;color:#e2e8f0}
+  .role-info .role-desc{font-size:9px;color:#8b949e}
+
+  /* Flow Diagram — Main */
+  .flow-container{background:linear-gradient(180deg,#0d1225,#0f1923);border:1px solid #1b2836;border-radius:16px;padding:35px 30px;position:relative;overflow:hidden}
+
+  .phase-flow{display:flex;gap:0;align-items:stretch;justify-content:center;flex-wrap:wrap}
+
+  .phase-card{flex:1;min-width:180px;max-width:210px;position:relative;z-index:2}
+
+  .phase-inner{border-radius:12px;overflow:hidden;height:100%;display:flex;flex-direction:column;transition:all .3s}
+  .phase-inner:hover{transform:translateY(-4px);box-shadow:0 12px 35px rgba(0,0,0,.4)}
+
+  .phase-number{text-align:center;padding:10px 0 6px;font-family:'JetBrains Mono';font-size:28px;font-weight:900}
+  .phase-name{text-align:center;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;padding:0 10px 8px}
+  .phase-subtitle{text-align:center;font-size:9px;padding:0 10px 10px;font-style:italic}
+  .phase-body{padding:10px 14px 14px;flex:1}
+  .phase-body ul{list-style:none;padding:0}
+  .phase-body ul li{font-size:10px;color:#a0aec0;padding:3px 0 3px 14px;position:relative;line-height:1.5}
+  .phase-body ul li::before{content:'›';position:absolute;left:2px;font-weight:700;font-size:12px}
+
+  .phase-kpi{margin-top:10px;padding:8px 10px;border-radius:6px;text-align:center}
+  .phase-kpi .kpi-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+  .phase-kpi .kpi-value{font-size:11px;font-weight:800;font-family:'JetBrains Mono'}
+
+  .arrow-connector{display:flex;align-items:center;justify-content:center;width:35px;flex-shrink:0;z-index:1}
+  .arrow-connector svg{width:24px;height:24px}
+
+  /* Phase Colors */
+  .p1 .phase-inner{background:linear-gradient(180deg,#1a1520,#161020);border:1px solid #3d2060}
+  .p1 .phase-number{color:#b794f4}
+  .p1 .phase-name{color:#b794f4}
+  .p1 .phase-subtitle{color:#7c5faa}
+  .p1 .phase-body ul li::before{color:#b794f4}
+  .p1 .phase-kpi{background:#b794f414;border:1px solid #b794f430}
+  .p1 .phase-kpi .kpi-label{color:#b794f4}
+  .p1 .phase-kpi .kpi-value{color:#d6bcfa}
+
+  .p2 .phase-inner{background:linear-gradient(180deg,#1a1015,#1a0d12);border:1px solid #602040}
+  .p2 .phase-number{color:#f687b3}
+  .p2 .phase-name{color:#f687b3}
+  .p2 .phase-subtitle{color:#aa5f7c}
+  .p2 .phase-body ul li::before{color:#f687b3}
+  .p2 .phase-kpi{background:#f687b314;border:1px solid #f687b330}
+  .p2 .phase-kpi .kpi-label{color:#f687b3}
+  .p2 .phase-kpi .kpi-value{color:#fbb6ce}
+
+  .p3 .phase-inner{background:linear-gradient(180deg,#1a1510,#1a120d);border:1px solid #603820}
+  .p3 .phase-number{color:#ffa94d}
+  .p3 .phase-name{color:#ffa94d}
+  .p3 .phase-subtitle{color:#aa7a3f}
+  .p3 .phase-body ul li::before{color:#ffa94d}
+  .p3 .phase-kpi{background:#ffa94d14;border:1px solid #ffa94d30}
+  .p3 .phase-kpi .kpi-label{color:#ffa94d}
+  .p3 .phase-kpi .kpi-value{color:#ffc078}
+
+  .p4 .phase-inner{background:linear-gradient(180deg,#151a10,#111a0d);border:1px solid #406020}
+  .p4 .phase-number{color:#a9e34b}
+  .p4 .phase-name{color:#a9e34b}
+  .p4 .phase-subtitle{color:#7aaa3f}
+  .p4 .phase-body ul li::before{color:#a9e34b}
+  .p4 .phase-kpi{background:#a9e34b14;border:1px solid #a9e34b30}
+  .p4 .phase-kpi .kpi-label{color:#a9e34b}
+  .p4 .phase-kpi .kpi-value{color:#c0eb75}
+
+  .p5 .phase-inner{background:linear-gradient(180deg,#101a18,#0d1a15);border:1px solid #206050}
+  .p5 .phase-number{color:#51cf66}
+  .p5 .phase-name{color:#51cf66}
+  .p5 .phase-subtitle{color:#3faa55}
+  .p5 .phase-body ul li::before{color:#51cf66}
+  .p5 .phase-kpi{background:#51cf6614;border:1px solid #51cf6630}
+  .p5 .phase-kpi .kpi-label{color:#51cf66}
+  .p5 .phase-kpi .kpi-value{color:#69db7c}
+
+  .p6 .phase-inner{background:linear-gradient(180deg,#10151a,#0d131a);border:1px solid #204060}
+  .p6 .phase-number{color:#4dabf7}
+  .p6 .phase-name{color:#4dabf7}
+  .p6 .phase-subtitle{color:#3f7aaa}
+  .p6 .phase-body ul li::before{color:#4dabf7}
+  .p6 .phase-kpi{background:#4dabf714;border:1px solid #4dabf730}
+  .p6 .phase-kpi .kpi-label{color:#4dabf7}
+  .p6 .phase-kpi .kpi-value{color:#74c0fc}
+
+  /* Feedback Loop */
+  .feedback-loop{margin-top:18px;padding:14px 20px;border:2px dashed #ff6b6b40;border-radius:10px;text-align:center;background:rgba(255,107,107,.02)}
+  .feedback-loop .loop-text{font-size:12px;color:#ff6b6b;font-weight:700;letter-spacing:1px}
+  .feedback-loop .loop-desc{font-size:10px;color:#8b949e;margin-top:4px}
+  .feedback-loop .loop-arrow{font-size:20px;color:#ff6b6b;margin:4px 0}
+
+  /* Detail Cards */
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+  @media(max-width:1100px){.detail-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:700px){.detail-grid{grid-template-columns:1fr}}
+
+  .detail-card{border-radius:12px;overflow:hidden;transition:all .3s}
+  .detail-card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+
+  .detail-header{padding:16px 18px;display:flex;align-items:center;gap:12px}
+  .detail-num{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;font-family:'JetBrains Mono';flex-shrink:0}
+  .detail-header-text h3{font-size:13px;font-weight:700}
+  .detail-header-text .d-property{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;margin-top:1px}
+
+  .detail-body{padding:4px 18px 16px}
+  .detail-section{margin-bottom:12px}
+  .detail-section:last-child{margin-bottom:0}
+  .detail-section h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #21262d}
+  .detail-section ul{list-style:none}
+  .detail-section ul li{font-size:10px;color:#a0aec0;padding:3px 0 3px 16px;position:relative;line-height:1.5}
+  .detail-section ul li::before{position:absolute;left:0;font-size:10px}
+  .act-list li::before{content:'▸';font-weight:700}
+  .tool-list li::before{content:'⚙';font-size:9px}
+  .out-list li::before{content:'✦';font-size:8px}
+
+  /* Card theme colors */
+  .dc1{background:linear-gradient(135deg,#1a1520,#13101a);border:1px solid #3d2060}
+  .dc1 .detail-header{background:linear-gradient(135deg,rgba(183,148,244,.1),transparent)}
+  .dc1 .detail-num{background:#b794f422;color:#b794f4}
+  .dc1 .detail-header-text h3{color:#b794f4}
+  .dc1 .detail-section h4{color:#b794f4}
+  .dc1 .act-list li::before,.dc1 .tool-list li::before,.dc1 .out-list li::before{color:#b794f4}
+
+  .dc2{background:linear-gradient(135deg,#1a1015,#1a0d12);border:1px solid #602040}
+  .dc2 .detail-header{background:linear-gradient(135deg,rgba(246,135,179,.1),transparent)}
+  .dc2 .detail-num{background:#f687b322;color:#f687b3}
+  .dc2 .detail-header-text h3{color:#f687b3}
+  .dc2 .detail-section h4{color:#f687b3}
+  .dc2 .act-list li::before,.dc2 .tool-list li::before,.dc2 .out-list li::before{color:#f687b3}
+
+  .dc3{background:linear-gradient(135deg,#1a1510,#1a120d);border:1px solid #603820}
+  .dc3 .detail-header{background:linear-gradient(135deg,rgba(255,169,77,.1),transparent)}
+  .dc3 .detail-num{background:#ffa94d22;color:#ffa94d}
+  .dc3 .detail-header-text h3{color:#ffa94d}
+  .dc3 .detail-section h4{color:#ffa94d}
+  .dc3 .act-list li::before,.dc3 .tool-list li::before,.dc3 .out-list li::before{color:#ffa94d}
+
+  .dc4{background:linear-gradient(135deg,#151a10,#111a0d);border:1px solid #406020}
+  .dc4 .detail-header{background:linear-gradient(135deg,rgba(169,227,75,.1),transparent)}
+  .dc4 .detail-num{background:#a9e34b22;color:#a9e34b}
+  .dc4 .detail-header-text h3{color:#a9e34b}
+  .dc4 .detail-section h4{color:#a9e34b}
+  .dc4 .act-list li::before,.dc4 .tool-list li::before,.dc4 .out-list li::before{color:#a9e34b}
+
+  .dc5{background:linear-gradient(135deg,#101a18,#0d1a15);border:1px solid #206050}
+  .dc5 .detail-header{background:linear-gradient(135deg,rgba(81,207,102,.1),transparent)}
+  .dc5 .detail-num{background:#51cf6622;color:#51cf66}
+  .dc5 .detail-header-text h3{color:#51cf66}
+  .dc5 .detail-section h4{color:#51cf66}
+  .dc5 .act-list li::before,.dc5 .tool-list li::before,.dc5 .out-list li::before{color:#51cf66}
+
+  .dc6{background:linear-gradient(135deg,#10151a,#0d131a);border:1px solid #204060}
+  .dc6 .detail-header{background:linear-gradient(135deg,rgba(77,171,247,.1),transparent)}
+  .dc6 .detail-num{background:#4dabf722;color:#4dabf7}
+  .dc6 .detail-header-text h3{color:#4dabf7}
+  .dc6 .detail-section h4{color:#4dabf7}
+  .dc6 .act-list li::before,.dc6 .tool-list li::before,.dc6 .out-list li::before{color:#4dabf7}
+
+  /* Escalation Matrix */
+  .esc-table{width:100%;border-collapse:collapse;font-size:11px}
+  .esc-table th{background:#161b22;color:#ff6b6b;padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #21262d}
+  .esc-table td{padding:8px 12px;border-bottom:1px solid #1b2836;color:#a0aec0;vertical-align:top;font-size:10px;line-height:1.5}
+  .esc-table tr:hover td{background:rgba(255,107,107,.03)}
+  .sev-badge{padding:2px 8px;border-radius:4px;font-size:9px;font-weight:800;font-family:'JetBrains Mono';display:inline-block}
+  .sev-1{background:#ff6b6b25;color:#ff6b6b}
+  .sev-2{background:#ffa94d25;color:#ffa94d}
+  .sev-3{background:#ffd93d25;color:#ffd93d}
+  .sev-4{background:#51cf6625;color:#51cf66}
+
+  /* Summary */
+  .summary-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #21262d10}
+  .summary-row:last-child{border-bottom:none}
+  .summary-num{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;font-family:'JetBrains Mono';flex-shrink:0}
+  .summary-name{font-size:13px;font-weight:700;min-width:140px}
+  .summary-dash{flex:1;height:1px;background:repeating-linear-gradient(90deg,#21262d 0 6px,transparent 6px 12px);min-width:30px}
+  .summary-goal{font-size:11px;color:#8b949e;font-style:italic;min-width:180px;text-align:center}
+  .summary-dash2{flex:1;height:1px;background:repeating-linear-gradient(90deg,#21262d 0 6px,transparent 6px 12px);min-width:30px}
+  .summary-action{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;min-width:150px;text-align:right}
+
+  .footer-note{text-align:center;margin-top:35px;padding:18px;border-top:1px solid #21262d}
+  .footer-note p{font-size:10px;color:#484f58;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="download-bar">
+  <h3>🚨 CSIRT Incident Response Framework</h3>
+  <button class="btn-download" id="downloadBtn" onclick="downloadDiagram()">⬇ Download as PNG</button>
+</div>
+
+<div id="diagram">
+
+  <!-- ═══ TITLE ═══ -->
+  <div class="main-title">
+    <h1>INCIDENT RESPONSE FRAMEWORK</h1>
+    <div class="sub">Computer Security Incident Response Team (CSIRT)</div>
+    <div class="desc">
+      Designing and deploying the best threat models still doesn't ensure full protection of data from cyber incidents.
+      Incident Response (IR) is the critical next step — a structured methodology for detecting, containing, eradicating,
+      and recovering from security incidents while preserving organizational reputation and business continuity.
+      The CSIRT operationalizes this through six core phases.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ SECTION 1: INTRODUCTION ═══ -->
+  <div class="section-title">
+    1 — WHY INCIDENT RESPONSE MATTERS
+    <span>Context: From threat modeling to active defense — bridging the gap when prevention fails</span>
+  </div>
+
+  <div class="intro-box">
+    <div class="intro-left">
+      <h3>🎯 The Reality of Cyber Incidents</h3>
+      <p>
+        No security architecture is impenetrable. Despite robust threat models (STRIDE, PASTA, LINDDUN),
+        defense-in-depth strategies, and zero-trust architectures, adversaries continue to find gaps.
+        <br><br>
+        <strong style="color:#ff6b6b">Incident Response</strong> is the disciplined process a CSIRT follows
+        when a security event becomes a confirmed incident. It transforms chaos into coordinated action —
+        minimizing damage, reducing recovery time, preserving forensic evidence, and feeding lessons back
+        into the security posture.
+        <br><br>
+        The <strong style="color:#ffa94d">NIST SP 800-61</strong> framework defines six interconnected phases
+        that form a continuous lifecycle — not a one-time checklist.
+      </p>
+    </div>
+    <div class="intro-right">
+      <h3>👥 CSIRT Team Composition</h3>
+      <div class="csirt-roles">
+        <div class="role-item">
+          <div class="role-icon">🛡️</div>
+          <div class="role-info"><div class="role-name">IR Manager / Lead</div><div class="role-desc">Overall coordination &amp; decision authority</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">🔍</div>
+          <div class="role-info"><div class="role-name">Security Analyst (L1/L2/L3)</div><div class="role-desc">Triage, investigation, threat hunting</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">🧬</div>
+          <div class="role-info"><div class="role-name">Forensic Investigator</div><div class="role-desc">Evidence collection &amp; chain of custody</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">🔧</div>
+          <div class="role-info"><div class="role-name">Systems / Network Engineer</div><div class="role-desc">Containment, isolation, recovery</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">📋</div>
+          <div class="role-info"><div class="role-name">Legal / Compliance</div><div class="role-desc">Regulatory reporting, evidence admissibility</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">📢</div>
+          <div class="role-info"><div class="role-name">Communications Lead</div><div class="role-desc">Stakeholder, media &amp; customer comms</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">👔</div>
+          <div class="role-info"><div class="role-name">Executive Sponsor (CISO)</div><div class="role-desc">Strategic decisions, budget authority</div></div>
+        </div>
+        <div class="role-item">
+          <div class="role-icon">🤝</div>
+          <div class="role-info"><div class="role-name">External Partners</div><div class="role-desc">CERT, law enforcement, threat intel</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ SECTION 2: 6-PHASE FLOW DIAGRAM ═══ -->
+  <div class="section-title">
+    2 — THE 6 PHASES OF INCIDENT RESPONSE
+    <span>Sequential lifecycle with continuous feedback loop — each phase feeds intelligence back to improve the previous</span>
+  </div>
+
+  <div class="flow-container">
+
+    <div class="phase-flow">
+
+      <!-- PHASE 1 -->
+      <div class="phase-card p1">
+        <div class="phase-inner">
+          <div class="phase-number">01</div>
+          <div class="phase-name">Preparation</div>
+          <div class="phase-subtitle">"Ready before the storm"</div>
+          <div class="phase-body">
+            <ul>
+              <li>IR policy &amp; plan development</li>
+              <li>CSIRT formation &amp; training</li>
+              <li>Tooling &amp; infrastructure setup</li>
+              <li>Communication plans (int/ext)</li>
+              <li>Tabletop exercises &amp; drills</li>
+              <li>Threat intelligence feeds</li>
+              <li>Baseline &amp; asset inventory</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">MTTR Baseline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- PHASE 2 -->
+      <div class="phase-card p2">
+        <div class="phase-inner">
+          <div class="phase-number">02</div>
+          <div class="phase-name">Identification</div>
+          <div class="phase-subtitle">"Is this an incident?"</div>
+          <div class="phase-body">
+            <ul>
+              <li>SIEM alert triage &amp; correlation</li>
+              <li>Anomaly detection (UEBA)</li>
+              <li>IDS/IPS &amp; EDR alerting</li>
+              <li>User / third-party reporting</li>
+              <li>Threat hunting (proactive)</li>
+              <li>Severity classification</li>
+              <li>Incident declaration decision</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">MTTD (Detect)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- PHASE 3 -->
+      <div class="phase-card p3">
+        <div class="phase-inner">
+          <div class="phase-number">03</div>
+          <div class="phase-name">Containment</div>
+          <div class="phase-subtitle">"Stop the bleeding"</div>
+          <div class="phase-body">
+            <ul>
+              <li>Short-term: isolate affected systems</li>
+              <li>Long-term: apply temp patches</li>
+              <li>Network segmentation / blocking</li>
+              <li>Account disabling / credential reset</li>
+              <li>Forensic image acquisition</li>
+              <li>Evidence preservation (CoC)</li>
+              <li>Communication to stakeholders</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">MTTC (Contain)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- PHASE 4 -->
+      <div class="phase-card p4">
+        <div class="phase-inner">
+          <div class="phase-number">04</div>
+          <div class="phase-name">Eradication</div>
+          <div class="phase-subtitle">"Remove the root cause"</div>
+          <div class="phase-body">
+            <ul>
+              <li>Malware removal &amp; cleaning</li>
+              <li>Root cause analysis (RCA)</li>
+              <li>Vulnerability patching</li>
+              <li>Compromised account remediation</li>
+              <li>Backdoor / persistence removal</li>
+              <li>IOC sweep across environment</li>
+              <li>Configuration hardening</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">Completeness %</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- PHASE 5 -->
+      <div class="phase-card p5">
+        <div class="phase-inner">
+          <div class="phase-number">05</div>
+          <div class="phase-name">Recovery</div>
+          <div class="phase-subtitle">"Restore and verify"</div>
+          <div class="phase-body">
+            <ul>
+              <li>System restoration from backups</li>
+              <li>Rebuild from clean images</li>
+              <li>Phased reconnection to network</li>
+              <li>Enhanced monitoring period</li>
+              <li>Validation &amp; testing (pen test)</li>
+              <li>Business continuity resumption</li>
+              <li>Customer / public notification</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">MTTR (Recover)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- PHASE 6 -->
+      <div class="phase-card p6">
+        <div class="phase-inner">
+          <div class="phase-number">06</div>
+          <div class="phase-name">Lessons Learned</div>
+          <div class="phase-subtitle">"Never waste a crisis"</div>
+          <div class="phase-body">
+            <ul>
+              <li>Post-incident review (PIR)</li>
+              <li>Timeline reconstruction</li>
+              <li>Gap analysis &amp; what-if scenarios</li>
+              <li>IR plan &amp; playbook updates</li>
+              <li>Policy / procedure revisions</li>
+              <li>Training improvements</li>
+              <li>Threat model updates</li>
+            </ul>
+            <div class="phase-kpi">
+              <div class="kpi-label">Key Metric</div>
+              <div class="kpi-value">Improvements #</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Feedback Loop -->
+    <div class="feedback-loop">
+      <div class="loop-arrow">⟲</div>
+      <div class="loop-text">CONTINUOUS IMPROVEMENT FEEDBACK LOOP</div>
+      <div class="loop-desc">Phase 6 (Lessons Learned) feeds directly back into Phase 1 (Preparation) — updating policies, tools, training, playbooks, and threat models. Each incident makes the organization stronger.</div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ SECTION 3: DETAILED PHASE BREAKDOWN ═══ -->
+  <div class="section-title">
+    3 — DETAILED PHASE BREAKDOWN
+    <span>Key activities, tools, and deliverables for each CSIRT phase</span>
+  </div>
+
+  <div class="detail-grid">
+
+    <!-- Phase 1 Detail -->
+    <div class="detail-card dc1">
+      <div class="detail-header">
+        <div class="detail-num">01</div>
+        <div class="detail-header-text">
+          <h3>PREPARATION</h3>
+          <div class="d-property">Foundation of all IR capability</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Develop &amp; approve IR policy and plan</li>
+            <li>Build CSIRT — define roles, RACI matrix</li>
+            <li>Deploy IR tooling (SIEM, SOAR, EDR, forensic kits)</li>
+            <li>Establish communication trees &amp; war room</li>
+            <li>Conduct tabletop exercises quarterly</li>
+            <li>Integrate threat intelligence feeds</li>
+            <li>Create incident classification taxonomy</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>SIEM (Splunk, Sentinel, QRadar)</li>
+            <li>SOAR (Phantom, XSOAR, Swimlane)</li>
+            <li>Ticketing (ServiceNow, Jira)</li>
+            <li>Threat Intel (MISP, OTX, VirusTotal)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>IR Policy &amp; Plan document</li>
+            <li>Playbook library (per incident type)</li>
+            <li>Contact / escalation matrix</li>
+            <li>Asset inventory &amp; baseline configs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 2 Detail -->
+    <div class="detail-card dc2">
+      <div class="detail-header">
+        <div class="detail-num">02</div>
+        <div class="detail-header-text">
+          <h3>IDENTIFICATION</h3>
+          <div class="d-property">Detection &amp; triage of security events</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Monitor SIEM dashboards &amp; alerts 24/7</li>
+            <li>Triage: true positive vs false positive</li>
+            <li>Correlate events across data sources</li>
+            <li>Classify severity (P1–P4)</li>
+            <li>Assign incident handler &amp; open ticket</li>
+            <li>Begin initial scoping &amp; impact assessment</li>
+            <li>Formally declare incident if confirmed</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>SIEM correlation rules &amp; alerts</li>
+            <li>EDR (CrowdStrike, SentinelOne, Carbon Black)</li>
+            <li>UEBA / NTA (Darktrace, Exabeam)</li>
+            <li>Threat hunting frameworks (MITRE ATT&amp;CK)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>Incident ticket with initial classification</li>
+            <li>Preliminary scope &amp; affected assets</li>
+            <li>Severity rating &amp; escalation trigger</li>
+            <li>Initial IOC collection</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 3 Detail -->
+    <div class="detail-card dc3">
+      <div class="detail-header">
+        <div class="detail-num">03</div>
+        <div class="detail-header-text">
+          <h3>CONTAINMENT</h3>
+          <div class="d-property">Limiting damage &amp; preserving evidence</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Short-term: isolate hosts, block IPs/domains</li>
+            <li>Long-term: deploy temp patches, re-segment</li>
+            <li>Disable compromised accounts &amp; API keys</li>
+            <li>Create forensic disk/memory images</li>
+            <li>Preserve logs &amp; evidence (chain of custody)</li>
+            <li>Activate backup communication channels</li>
+            <li>Notify legal, compliance, executive team</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>Network ACLs, firewall rules, NAC</li>
+            <li>EDR isolation (host quarantine)</li>
+            <li>FTK Imager, dd, KAPE (forensic imaging)</li>
+            <li>Volatility (memory forensics)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>Containment actions log (timestamped)</li>
+            <li>Forensic images with hash verification</li>
+            <li>Updated scope &amp; blast radius</li>
+            <li>Stakeholder notification records</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 4 Detail -->
+    <div class="detail-card dc4">
+      <div class="detail-header">
+        <div class="detail-num">04</div>
+        <div class="detail-header-text">
+          <h3>ERADICATION</h3>
+          <div class="d-property">Eliminating the threat completely</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Remove malware, rootkits, backdoors</li>
+            <li>Perform root cause analysis (RCA)</li>
+            <li>Patch exploited vulnerabilities</li>
+            <li>Reset all compromised credentials</li>
+            <li>Sweep entire environment for IOCs</li>
+            <li>Harden configurations &amp; close gaps</li>
+            <li>Verify no persistence mechanisms remain</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>AV / EDR full scans + YARA rules</li>
+            <li>Vulnerability scanners (Nessus, Qualys)</li>
+            <li>IOC scanners (Loki, Thor)</li>
+            <li>Configuration audit tools (CIS Benchmarks)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>Root cause analysis report</li>
+            <li>Complete IOC list (hashes, IPs, domains)</li>
+            <li>Patch / remediation verification log</li>
+            <li>Clean bill of health scan results</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 5 Detail -->
+    <div class="detail-card dc5">
+      <div class="detail-header">
+        <div class="detail-num">05</div>
+        <div class="detail-header-text">
+          <h3>RECOVERY</h3>
+          <div class="d-property">Restoring operations safely</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Restore systems from verified clean backups</li>
+            <li>Rebuild compromised systems from gold images</li>
+            <li>Phased reconnection (staged rollout)</li>
+            <li>Enhanced monitoring for re-infection (30–90 days)</li>
+            <li>Validate system integrity (pen test / vuln scan)</li>
+            <li>Resume business operations gradually</li>
+            <li>Issue customer / regulatory notifications</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>Backup / DR platforms (Veeam, Commvault)</li>
+            <li>Golden image repositories</li>
+            <li>Enhanced SIEM alerting rules</li>
+            <li>Penetration testing frameworks</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>System restoration verification report</li>
+            <li>Enhanced monitoring dashboard</li>
+            <li>Business resumption confirmation</li>
+            <li>Regulatory notification records</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 6 Detail -->
+    <div class="detail-card dc6">
+      <div class="detail-header">
+        <div class="detail-num">06</div>
+        <div class="detail-header-text">
+          <h3>LESSONS LEARNED</h3>
+          <div class="d-property">Post-incident improvement cycle</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>▸ Key Activities</h4>
+          <ul class="act-list">
+            <li>Conduct Post-Incident Review (PIR) meeting</li>
+            <li>Reconstruct complete incident timeline</li>
+            <li>Identify what worked / what failed</li>
+            <li>Gap analysis + what-if scenarios</li>
+            <li>Update IR plans, playbooks, runbooks</li>
+            <li>Revise policies &amp; security controls</li>
+            <li>Update threat models (feed back to STRIDE)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>⚙ Tools &amp; Resources</h4>
+          <ul class="tool-list">
+            <li>PIR meeting template &amp; facilitator</li>
+            <li>Timeline visualization (Timesketch)</li>
+            <li>Knowledge base / wiki updates</li>
+            <li>Training platform (range exercises)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <h4>✦ Deliverables</h4>
+          <ul class="out-list">
+            <li>Post-Incident Report (executive + technical)</li>
+            <li>Updated IR playbooks &amp; procedures</li>
+            <li>Improvement action items (tracked)</li>
+            <li>Updated risk register &amp; threat model</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ SECTION 4: SEVERITY / ESCALATION MATRIX ═══ -->
+  <div class="section-title">
+    4 — INCIDENT SEVERITY &amp; ESCALATION MATRIX
+    <span>Classification framework used during Phase 2 (Identification) to determine response urgency and team activation</span>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="esc-table">
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Classification</th>
+          <th>Examples</th>
+          <th>Response Time</th>
+          <th>Escalation</th>
+          <th>CSIRT Activation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="sev-badge sev-1">SEV-1 CRITICAL</span></td>
+          <td style="color:#ff6b6b;font-weight:600">Business-threatening</td>
+          <td>Active ransomware, data breach of PII/PHI, nation-state APT, complete system compromise</td>
+          <td style="color:#ff6b6b;font-weight:700">Immediate (≤15 min)</td>
+          <td>CISO → CEO → Board. Legal, PR activated. Law enforcement notification</td>
+          <td style="color:#ff6b6b">Full CSIRT + Executive War Room + External IR Retainer</td>
+        </tr>
+        <tr>
+          <td><span class="sev-badge sev-2">SEV-2 HIGH</span></td>
+          <td style="color:#ffa94d;font-weight:600">Significant impact</td>
+          <td>Privileged account compromise, lateral movement detected, DDoS affecting services</td>
+          <td style="color:#ffa94d;font-weight:700">≤ 30 minutes</td>
+          <td>CISO → IT Director. Legal on standby</td>
+          <td style="color:#ffa94d">Core CSIRT activated + specialized SMEs</td>
+        </tr>
+        <tr>
+          <td><span class="sev-badge sev-3">SEV-3 MEDIUM</span></td>
+          <td style="color:#ffd93d;font-weight:600">Moderate impact</td>
+          <td>Malware on single host, phishing with credential harvesting, unauthorized access attempt</td>
+          <td style="color:#ffd93d;font-weight:700">≤ 4 hours</td>
+          <td>SOC Manager → IR Lead</td>
+          <td style="color:#ffd93d">SOC team + IR analyst on-call</td>
+        </tr>
+        <tr>
+          <td><span class="sev-badge sev-4">SEV-4 LOW</span></td>
+          <td style="color:#51cf66;font-weight:600">Minimal impact</td>
+          <td>Policy violation, failed brute-force, spam campaign, minor misconfiguration</td>
+          <td style="color:#51cf66;font-weight:700">Next business day</td>
+          <td>SOC L1/L2 handles. Documented in ticket</td>
+          <td style="color:#51cf66">SOC standard operations</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ SECTION 5: SUMMARY ═══ -->
+  <div class="section-title">
+    5 — CSIRT 6-PHASE SUMMARY
+    <span>At-a-glance reference mapping each phase to its core goal and primary action</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#0d1225,#111a33);border:1px solid #1e2d4a;border-radius:14px;padding:24px 28px">
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#b794f422;color:#b794f4">01</div>
+      <div class="summary-name" style="color:#b794f4">PREPARATION</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Get ready before it happens"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#b794f4">PLAN · TRAIN · EQUIP</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#f687b322;color:#f687b3">02</div>
+      <div class="summary-name" style="color:#f687b3">IDENTIFICATION</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Detect, triage, declare"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#f687b3">DETECT · CLASSIFY · SCOPE</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#ffa94d22;color:#ffa94d">03</div>
+      <div class="summary-name" style="color:#ffa94d">CONTAINMENT</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Limit damage, preserve evidence"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#ffa94d">ISOLATE · IMAGE · BLOCK</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#a9e34b22;color:#a9e34b">04</div>
+      <div class="summary-name" style="color:#a9e34b">ERADICATION</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Remove the root cause entirely"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#a9e34b">CLEAN · PATCH · HARDEN</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#51cf6622;color:#51cf66">05</div>
+      <div class="summary-name" style="color:#51cf66">RECOVERY</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Restore and verify safely"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#51cf66">RESTORE · VALIDATE · MONITOR</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-num" style="background:#4dabf722;color:#4dabf7">06</div>
+      <div class="summary-name" style="color:#4dabf7">LESSONS LEARNED</div>
+      <div class="summary-dash"></div>
+      <div class="summary-goal">"Turn crisis into capability"</div>
+      <div class="summary-dash2"></div>
+      <div class="summary-action" style="color:#4dabf7">REVIEW · UPDATE · IMPROVE</div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-note">
+    <p>
+      CSIRT Incident Response Framework — Based on <strong style="color:#ff6b6b">NIST SP 800-61 Rev. 2</strong> &amp; <strong style="color:#ffa94d">SANS Incident Handler's Handbook</strong><br>
+      IR is not a one-time activity — it is a <strong style="color:#51cf66">continuous lifecycle</strong> where each incident strengthens organizational resilience.<br>
+      <strong style="color:#4dabf7">The goal is not zero incidents — it's rapid detection, effective containment, complete eradication, and continuous improvement.</strong>
+    </p>
+  </div>
+
+</div>
+
+<script>
+function downloadDiagram(){
+  const btn=document.getElementById('downloadBtn');
+  btn.textContent='⏳ Generating PNG...';
+  btn.classList.add('done');
+  const el=document.getElementById('diagram');
+  html2canvas(el,{
+    backgroundColor:'#0a0e1a',
+    scale:2,
+    useCORS:true,
+    logging:false,
+    width:el.scrollWidth,
+    height:el.scrollHeight,
+    windowWidth:el.scrollWidth,
+    windowHeight:el.scrollHeight
+  }).then(function(c){
+    const a=document.createElement('a');
+    a.download='CSIRT_Incident_Response_Framework.png';
+    a.href=c.toDataURL('image/png');
+    a.click();
+    btn.textContent='✅ Downloaded!';
+    setTimeout(()=>{btn.textContent='⬇ Download as PNG';btn.classList.remove('done')},2500);
+  }).catch(function(e){
+    console.error(e);
+    btn.textContent='⬇ Download as PNG';
+    btn.classList.remove('done');
+    alert('Error generating image. Try browser Print → Save as PDF.');
+  });
+}
+</script>
+
+</body>
+</html>
